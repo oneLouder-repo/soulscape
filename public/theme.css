@@ -1,0 +1,296 @@
+/*
+ * soulscape's look: 90s window chrome (bevels, title bars, a taskbar) in
+ * modern colours taken from the mood images in the plan.
+ *
+ * Colours are tokens; every window picks one with data-tone (see
+ * src/plugins/index.js). Fonts are system fonts for now; self-hosted ones
+ * (a wide grotesk, a monospace, a pixel face) come with the design pass.
+ */
+
+:root {
+  --ink: #141210;
+  --ink-2: #221f1b;
+  --cream: #F1E6D2;
+  --coral: #E2725B;
+  --sand: #E8B56F;
+  --sage: #9DB89A;
+  --pink: #E9C6CC;
+  --olive: #5B6B2A;
+  --marigold: #E3A23B;
+  --taupe: #A79E92;
+  --phosphor: #9CC8FF;
+  --crt: #0B0F1A;
+  --stripe-1: #E8432E;
+  --stripe-2: #F28A2E;
+  --stripe-3: #F5C542;
+  --stripe-4: #F4F1EA;
+  --marker: #F3E86A;
+
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --wide: 'Archivo Expanded', 'Helvetica Neue', Arial, sans-serif;
+
+  /* A window's colours; each data-tone below sets these three. */
+  --win-bg: var(--cream);
+  --win-bar: var(--sand);
+  --win-text: var(--ink);
+
+  /* The 90s bevel: light top-left edge, dark bottom-right edge. */
+  --bevel: inset 2px 2px 0 rgba(255, 255, 255, .55), inset -2px -2px 0 rgba(0, 0, 0, .35);
+  --bevel-in: inset 2px 2px 0 rgba(0, 0, 0, .3), inset -2px -2px 0 rgba(255, 255, 255, .45);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--ink);
+  color: var(--cream);
+  font: 14px/1.45 var(--sans);
+  overflow: hidden;
+}
+body.dragging { cursor: grabbing; user-select: none; }
+.booting { font-family: var(--mono); padding: 24px; }
+
+#app { height: 100%; display: grid; grid-template-rows: 1fr auto; }
+
+/* ---------- The desk ---------- */
+
+.desk {
+  position: relative;
+  overflow: hidden;
+  /* A faint grid, like a cutting mat or a CRT's raster. */
+  background:
+    linear-gradient(rgba(241, 230, 210, .045) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(241, 230, 210, .045) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--ink);
+}
+.desk-layer { position: absolute; inset: 0; }
+
+/* ---------- Windows ---------- */
+
+.win {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  background: var(--win-bg);
+  color: var(--win-text);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: var(--bevel), 6px 6px 0 rgba(0, 0, 0, .45);
+  overflow: hidden;
+}
+.win.pinned { outline: 2px dashed var(--marker); outline-offset: 2px; }
+.win.folded .win-body, .win.folded .win-grow { display: none; }
+.win.drop-target { outline: 3px solid var(--marker); outline-offset: 2px; }
+
+.win-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 6px 0 8px;
+  background: var(--win-bar);
+  color: var(--ink);
+  border-bottom: 2px solid var(--ink);
+  cursor: grab;
+  font: 700 12px/1 var(--mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  user-select: none;
+  touch-action: none;
+}
+/* The ridged grip, like a speaker grille. */
+.win-grip {
+  width: 28px; height: 12px;
+  background: repeating-linear-gradient(0deg, var(--ink) 0 2px, transparent 2px 4px);
+  opacity: .55;
+}
+.win-title { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.win-btns { display: flex; gap: 4px; }
+.win-btn {
+  width: 22px; height: 20px;
+  display: grid; place-items: center;
+  padding: 0;
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  background: var(--cream);
+  color: var(--ink);
+  box-shadow: var(--bevel);
+  font: 700 13px/1 var(--mono);
+  cursor: pointer;
+}
+.win-btn:active, .win-btn[aria-pressed="true"] { box-shadow: var(--bevel-in); background: var(--marker); }
+
+.win-tabs { display: none; gap: 2px; padding: 4px 6px 0; background: var(--win-bar); border-bottom: 2px solid var(--ink); }
+.win.stacked .win-tabs { display: flex; overflow-x: auto; }
+.win-tab {
+  max-width: 160px;
+  padding: 4px 10px;
+  border: 1.5px solid var(--ink);
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  background: color-mix(in srgb, var(--cream) 60%, var(--taupe));
+  color: var(--ink);
+  font: 600 11px/1.2 var(--mono);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: grab;
+  touch-action: none;
+}
+.win-tab.on { background: var(--cream); }
+.tab-ghost {
+  position: fixed; z-index: 99999; pointer-events: none;
+  padding: 4px 10px; border: 2px solid var(--ink); border-radius: 6px;
+  background: var(--marker); color: var(--ink); font: 600 11px var(--mono);
+}
+
+.win-body { flex: 1; overflow: auto; padding: 12px 14px; }
+.win-grow {
+  position: absolute; right: 0; bottom: 0; width: 18px; height: 18px;
+  cursor: nwse-resize; touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, var(--ink) 50% 58%, transparent 58% 70%, var(--ink) 70% 78%, transparent 78%);
+}
+
+/* Tones: each plugin's colours, from the mood images. */
+.win[data-tone="cream"]    { --win-bg: var(--cream); --win-bar: var(--sand); }
+.win[data-tone="sand"]     { --win-bg: var(--cream); --win-bar: var(--sand); }
+.win[data-tone="coral"]    { --win-bg: var(--cream); --win-bar: var(--coral); }
+.win[data-tone="sage"]     { --win-bg: #EEF2E6; --win-bar: var(--sage); }
+.win[data-tone="pink"]     { --win-bg: var(--pink); --win-bar: #D9A3AE; }
+.win[data-tone="marker"]   { --win-bg: #FFFBEA; --win-bar: var(--marker); }
+.win[data-tone="olive"]    { --win-bg: #2E3415; --win-bar: var(--marigold); --win-text: var(--cream); }
+.win[data-tone="ink"]      { --win-bg: var(--ink-2); --win-bar: var(--taupe); --win-text: var(--cream); }
+.win[data-tone="phosphor"] { --win-bg: var(--crt); --win-bar: var(--phosphor); --win-text: var(--phosphor); }
+.win[data-tone="stripes"]  { --win-bg: var(--ink-2); --win-text: var(--cream);
+  --win-bar: linear-gradient(90deg, var(--stripe-1) 0 25%, var(--stripe-2) 25% 50%, var(--stripe-3) 50% 75%, var(--stripe-4) 75%); }
+.win[data-tone="phosphor"] .win-body { text-shadow: 0 0 6px rgba(156, 200, 255, .45); font-family: var(--mono);
+  background: repeating-linear-gradient(0deg, rgba(156, 200, 255, .05) 0 1px, transparent 1px 3px), var(--crt); }
+
+/* ---------- Taskbar ---------- */
+
+.taskbar {
+  display: flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 8px;
+  background: var(--cream); color: var(--ink);
+  border-top: 2px solid var(--ink);
+  box-shadow: var(--bevel);
+  font: 600 12px var(--mono);
+}
+.start { position: relative; }
+.start-btn {
+  list-style: none; cursor: pointer;
+  padding: 5px 12px; border: 2px solid var(--ink); border-radius: 6px;
+  background: var(--coral); color: var(--ink); box-shadow: var(--bevel);
+  font: 800 13px var(--wide); letter-spacing: .02em;
+}
+.start-btn::-webkit-details-marker { display: none; }
+.start[open] .start-btn { box-shadow: var(--bevel-in); }
+.start-menu {
+  position: absolute; bottom: 38px; left: 0; z-index: 100000;
+  display: grid; min-width: 200px; padding: 6px;
+  background: var(--cream); border: 2px solid var(--ink); border-radius: 8px; box-shadow: var(--bevel), 6px 6px 0 rgba(0, 0, 0, .45);
+}
+.start-menu button { text-align: left; padding: 6px 10px; border: 0; background: none; font: inherit; color: var(--ink); cursor: pointer; border-radius: 4px; }
+.start-menu button:hover, .start-menu button:focus-visible { background: var(--marker); }
+.start-menu hr { border: 0; border-top: 1.5px solid var(--taupe); margin: 4px 0; width: 100%; }
+.task-windows { flex: 1; display: flex; gap: 4px; overflow: hidden; }
+.task-win {
+  max-width: 160px; padding: 4px 10px;
+  border: 1.5px solid var(--ink); border-radius: 4px; background: var(--cream); box-shadow: var(--bevel);
+  font: inherit; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+}
+.layouts, .search-bar select { font: inherit; padding: 3px 6px; border: 1.5px solid var(--ink); border-radius: 4px; background: var(--marker); color: var(--ink); }
+.clock { padding: 4px 10px; box-shadow: var(--bevel-in); border-radius: 4px; }
+.who { color: var(--olive); }
+
+/* ---------- Inside windows ---------- */
+
+.muted { opacity: .65; }
+.error { color: var(--stripe-1); }
+.right { justify-content: flex-end; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+.btn {
+  padding: 5px 12px; border: 1.5px solid currentColor; border-radius: 6px;
+  background: transparent; color: inherit; box-shadow: var(--bevel);
+  font: 600 12px var(--mono); cursor: pointer;
+}
+.btn.primary { background: var(--coral); color: var(--ink); border-color: var(--ink); }
+.btn:active { box-shadow: var(--bevel-in); }
+.linkish { padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.chip-row, .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.chip, .tag { padding: 3px 9px; border: 1.5px solid currentColor; border-radius: 999px; background: transparent; color: inherit; font: 600 11px var(--mono); }
+.chip { cursor: pointer; }
+.chip:hover { background: var(--marker); color: var(--ink); }
+.list { list-style: none; margin: 8px 0; padding: 0; }
+.list li { padding: 8px 0; border-bottom: 1px dashed color-mix(in srgb, currentColor 30%, transparent); }
+.quote { margin: 4px 0; padding-left: 8px; border-left: 3px solid var(--coral); }
+.search-bar { display: flex; gap: 6px; padding: 6px; background: var(--marker); border: 1.5px solid var(--ink); border-radius: 6px; }
+
+.stack-form { display: grid; gap: 10px; }
+.stack-form label { display: grid; gap: 3px; font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: .05em; }
+input, textarea, select { font: 14px var(--sans); }
+.stack-form input, .stack-form textarea, .comment-form input, .editor input {
+  padding: 6px 8px; border: 1.5px solid currentColor; border-radius: 4px; background: rgba(255, 255, 255, .08); color: inherit; box-shadow: var(--bevel-in);
+}
+fieldset { border: 1.5px solid currentColor; border-radius: 6px; }
+.checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+.check { display: flex; gap: 6px; align-items: center; text-transform: none !important; font: 13px var(--sans) !important; }
+
+/* Dossier: the profile card. */
+.dossier { display: grid; gap: 6px; }
+.dossier-head { display: flex; gap: 12px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--phosphor); }
+.dossier-portrait {
+  width: 64px; height: 64px; display: grid; place-items: center;
+  border: 1px solid var(--phosphor); font: 700 30px var(--mono);
+  background: radial-gradient(circle, rgba(156, 200, 255, .35) 1px, transparent 1.5px) 0 0 / 4px 4px;
+}
+.dossier-name { font: 700 18px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.dossier-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid rgba(156, 200, 255, .35); text-transform: uppercase; letter-spacing: .06em; }
+.dossier-label { margin-top: 8px; font-size: 11px; letter-spacing: .12em; opacity: .7; }
+.dossier-bio { margin: 4px 0; }
+
+/* Portfolio. */
+.portfolio { list-style: none; padding: 0; margin: 0; }
+.portfolio li { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1.5px solid var(--ink); }
+.index { font: 800 22px var(--wide); color: var(--coral); }
+
+/* Gallery: ornate frames, after the olive and marigold cameo frames. */
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+.gallery figure { margin: 0; }
+.frame { aspect-ratio: 4 / 5; padding: 10px; border-radius: 14px; background: var(--marigold);
+  box-shadow: inset 0 0 0 3px var(--olive), inset 0 0 0 6px var(--marigold), inset 0 0 0 8px #1E5A2E; }
+.frame-ornate .frame img, .frame-ornate .frame-blank { border-radius: 50%; }
+.frame img, .frame-blank { width: 100%; height: 100%; object-fit: cover; display: block; filter: grayscale(1) contrast(1.1); }
+.frame-blank { background: radial-gradient(circle, #3a3a3a 1px, transparent 1.6px) 0 0 / 5px 5px, #1b1b1b; }
+.gallery figcaption { margin-top: 6px; font-size: 12px; }
+
+/* Ideas board. */
+.pinboard { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.pin { padding: 12px; border: 1.5px solid var(--ink); border-radius: 10px; box-shadow: 3px 3px 0 var(--ink); font: 600 13px var(--sans); }
+.tone-sand { background: var(--sand); } .tone-sage { background: var(--sage); } .tone-coral { background: var(--coral); } .tone-pink { background: var(--pink); }
+
+/* Comments and likes under a space. */
+.space-footer { margin-top: 14px; padding-top: 8px; border-top: 2px solid currentColor; }
+.comments { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 8px; }
+.comment-form { display: flex; gap: 6px; }
+.comment-form input { flex: 1; }
+.editor { display: grid; gap: 6px; }
+.editor-row { display: grid; grid-template-columns: 1fr 1.4fr auto auto; gap: 6px; }
+
+/* Station placeholder, after the 808 poster. */
+.station-soon h3 { font: 800 22px var(--wide); margin: 12px 0 4px; }
+.steps { display: grid; grid-template-columns: repeat(16, 1fr); gap: 4px; }
+.step { height: 18px; border-radius: 2px; }
+.s0 { background: var(--stripe-1); } .s1 { background: var(--stripe-2); } .s2 { background: var(--stripe-3); } .s3 { background: var(--stripe-4); }
+
+.welcome h2 { font: 800 22px var(--wide); margin: 4px 0 8px; }
+
+/* Admin. */
+.grid { width: 100%; border-collapse: collapse; font-size: 12px; }
+.grid th { text-align: left; font: 600 11px var(--mono); text-transform: uppercase; opacity: .7; }
+.grid td, .grid th { padding: 6px; border-bottom: 1px solid rgba(241, 230, 210, .2); vertical-align: top; }
+.grid tr.off { opacity: .55; }
+.audit code { font-family: var(--mono); }
+
+:focus-visible { outline: 2px solid var(--marker); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

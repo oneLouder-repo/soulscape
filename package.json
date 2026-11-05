@@ -1,0 +1,16 @@
+{
+  "name": "soulscape",
+  "version": "0.1.0",
+  "private": true,
+  "description": "soulscape: a shared, windowed desk for creatives: portfolios, galleries, ideas and DJ stations.",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning server.js",
+    "dev": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning --watch-path=server server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/**/*.test.js\""
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "license": "UNLICENSED"
+}
